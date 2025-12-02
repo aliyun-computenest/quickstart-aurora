@@ -3,10 +3,21 @@ Service:
   DeployType: ros
   DeployMetadata:
     SupplierDeployMetadata:
+      ArtifactRelation:
+        ecs_image_quickstart-aurora:
+          ArtifactId: ${Artifact.EcsImage.ArtifactId}
+          ArtifactVersion: draft
       FileArtifactRelation:
         '{{ computenest::file::mengjunwei-mjw_quickstart-aurora }}':
-          ArtifactId: ${Artifact.Artifact_1.ArtifactId}
-          ArtifactVersion: ${Artifact.Artifact_1.ArtifactVersion}
+          ArtifactId: ${Artifact.FileArtifact.ArtifactId}
+          ArtifactVersion: ${Artifact.FileArtifact.ArtifactVersion}
+      SupplierTemplateConfigs:
+        - Name: 单机版
+          Url: ros_templates/template.yaml
+          AllowedRegions:
+            - cn-hangzhou
+            - cn-shanghai
+            - cn-beijing
     TemplateConfigs:
       - Name: 单机版
         Url: 'ros_templates/template.yaml'
@@ -16,11 +27,40 @@ Service:
           - cn-beijing
   ServiceType: private
   ServiceInfo:
-    Locale: zh-CN
-    ShortDescription: demo
-    Image: 'resources/icons/service_logo.png'
+    - Locale: zh-CN
+      Name: Aurora应用
+      ShortDescription: demo
+      Image: 'resources/icons/service_logo.png'
+
 Artifact:
-  Artifact_1:
+  # ECS镜像部署物
+  EcsImage:
+    ArtifactType: EcsImage
+    ArtifactName: ecs_image_quickstart-aurora
+    Description: quickstart-aurora EcsImage
+    SupportRegionIds:
+      - cn-hangzhou
+      - cn-shanghai
+      - cn-beijing
+    ArtifactBuildProperty:
+      CodeRepo:
+        Platform: github
+        Owner: your-github-username
+        RepoName: quickstart-aurora
+        Branch: main
+      RegionId: cn-hangzhou
+      CommandType: RunShellScript
+      CommandContent: |-
+        mkdir -p /root/application
+        if [ -e "/root/code/.env" ]; then cp -r "/root/code/.env" "/root/application/"; fi
+        if [ -e "/root/code/docker-compose.yaml" ]; then cp -r "/root/code/docker-compose.yaml" "/root/application/"; fi
+        cd /root/application
+        sed -i 's/pull_policy: always/pull_policy: if_not_present/g' docker-compose.yaml
+        docker compose -f docker-compose.yaml build
+        docker compose -f docker-compose.yaml pull || true;
+
+  # 文件部署物
+  FileArtifact:
     ArtifactType: File
     ArtifactName: mengjunwei-mjw_quickstart-aurora
     ArtifactProperty:

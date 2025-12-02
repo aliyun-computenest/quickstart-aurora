@@ -1,7 +1,7 @@
 ROSTemplateFormatVersion: '2015-09-01'
 Description:
-  en: Source Code Service Ros Template
-  zh-cn: 源代码服务模板
+  en: Aurora Application Deployment Template
+  zh-cn: Aurora应用部署模板
 Conditions:
   CreateVpcConditions:
     Fn::Equals:
@@ -154,6 +154,11 @@ Parameters:
       en: Zone ID
       zh-cn: 可用区ID
     AssociationProperty: ALIYUN::ECS::Instance::ZoneId
+    AssociationPropertyMetadata:
+      DefaultValueStrategy: random
+      InstanceChargeType: ${PayType}
+      SystemDiskCategory: cloud_essd
+      InstanceType: ${EcsInstanceType}
   VpcId:
     Type: String
     Label:
@@ -166,6 +171,7 @@ Parameters:
         - ${VpcOption}
     Default: ''
     AssociationPropertyMetadata:
+      AutoSelectFirst: true
       Visible:
         Condition:
           Fn::Equals:
@@ -183,18 +189,14 @@ Parameters:
         - ${VpcOption}
     Default: ''
     AssociationPropertyMetadata:
-      VpcId: VpcId
-      ZoneId: ZoneId
+      AutoSelectFirst: true
+      VpcId: ${VpcId}
+      ZoneId: ${ZoneId}
       Visible:
         Condition:
           Fn::Equals:
             - ExistingVPC
             - ${VpcOption}
-  Password:
-    Type: String
-    AssociationProperty: ALIYUN::ECS::Instance::Password
-    Label: 密码
-    NoEcho: True
 Resources:
   # 新建vpc
   EcsVpc:
@@ -263,7 +265,7 @@ Resources:
         Ref: ZoneId
       SecurityGroupId:
         Ref: SecurityGroup
-      ImageId: "{{resolve:oos:aliyun/services/computenest/images/aliyun_3_2104_java_21}}"
+      ImageId: ecs_image_quickstart-aurora
       Password:
         Ref: InstancePassword
       InstanceType:
@@ -278,8 +280,8 @@ Resources:
     Properties:
       InstanceIds:
         Fn::GetAtt:
-        - InstanceGroup
-        - InstanceIds
+          - InstanceGroup
+          - InstanceIds
       Type: RunShellScript
       Sync: true
       Timeout: 3600
@@ -287,29 +289,73 @@ Resources:
         Fn::Sub:
           - |
             #!/bin/bash
-            # 源代码通过computenest-cli被打包为tar.gz包，并发布为部署物
+            # 下载文件部署物
             wget '{{ computenest::file::mengjunwei-mjw_quickstart-aurora }}' -O mengjunwei-mjw_quickstart-aurora.tar.gz > /var/log/download.log
-            tar -zxvf mengjunwei-mjw_quickstart-aurora.tar.gz && cd "$(tar -tzf mengjunwei-mjw_quickstart-aurora.tar.gz | head -1 | awk -F'/' '{print $1}')"
-            echo "start run command"
-            echo "${!AdminPassword}"
+            
+            # 解压并进入目录
+            tar -zxvf mengjunwei-mjw_quickstart-aurora.tar.gz
+            cd "$(tar -tzf mengjunwei-mjw_quickstart-aurora.tar.gz | head -1 | awk -F'/' '{print $1}')"
+            
+            # 创建应用目录
+            mkdir -p /root/application
+            
+            # 复制配置文件
+            if [ -e ".env" ]; then cp -r ".env" "/root/application/"; fi
+            if [ -e "docker-compose.yaml" ]; then cp -r "docker-compose.yaml" "/root/application/"; fi
+            
+            # 进入应用目录并启动服务
+            cd /root/application
+            
+            # 修改 docker-compose 配置
+            sed -i 's/pull_policy: always/pull_policy: if_not_present/g' docker-compose.yaml
+            
+            # 构建和启动 Docker 服务
+            docker compose -f docker-compose.yaml build
+            docker compose -f docker-compose.yaml pull || true
+            docker compose -f docker-compose.yaml up -d
+            
+            # 创建 systemd 服务
+            cat > /etc/systemd/system/quickstart-aurora.service <<EOF
+            [Unit]
+            Description=Aurora Docker Compose Application Service
+            Requires=docker.service
+            After=docker.service
 
+            [Service]
+            Type=oneshot
+            RemainAfterExit=yes
+            WorkingDirectory=/root/application
+            ExecStart=/usr/bin/docker compose -f docker-compose.yaml up -d
+            ExecStop=/usr/bin/docker compose down
+            TimeoutStartSec=0
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+            
+            # 启用并启动服务
+            systemctl daemon-reload
+            systemctl enable quickstart-aurora
+            systemctl start quickstart-aurora
+            
+            # 安装云监控
             ARGUS_VERSION=3.5.7 /bin/bash -c "$(curl -sS https://cms-agent-${RegionId}.oss-${RegionId}-internal.aliyuncs.com/Argus/agent_install_ecs-1.7.sh)" >> /root/install_cms_agent.log 2>&1
           - RegionId:
               Ref: ALIYUN::Region
 Outputs:
   ServerAddress:
     Description:
-      en: ServerAddress.
-      zh-cn: 访问页面。
+      en: Aurora Application Access Address.
+      zh-cn: Aurora应用访问地址。
     Value:
       Fn::Sub:
         - http://${ServerAddress}:8080
         - ServerAddress:
             Fn::Select:
-            - 0
-            - Fn::GetAtt:
-              - InstanceGroup
-              - PublicIps
+              - 0
+              - Fn::GetAtt:
+                  - InstanceGroup
+                  - PublicIps
 Metadata:
   ALIYUN::ROS::Interface:
     ParameterGroups:
@@ -336,9 +382,3 @@ Metadata:
         Label:
           zh-cn: 可用区配置
           en: Availability Zone Configuration
-      - Parameters:
-          - Password
-        Label:
-          en: Software Configuration
-          zh-cn: 软件配置
-      
