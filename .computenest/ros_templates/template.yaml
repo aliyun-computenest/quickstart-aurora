@@ -349,7 +349,7 @@ Outputs:
       zh-cn: Aurora应用访问地址。
     Value:
       Fn::Sub:
-        - http://${ServerAddress}:8080
+        - http://${ServerAddress}:8080/web
         - ServerAddress:
             Fn::Select:
               - 0
