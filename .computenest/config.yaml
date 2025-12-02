@@ -45,9 +45,9 @@ Artifact:
     ArtifactBuildProperty:
       CodeRepo:
         Platform: github
-        Owner: your-github-username
-        RepoName: quickstart-aurora
-        Branch: main
+        Owner: LYH-RAIN
+        RepoName: aliyun-computenest/quickstart-LobeChat
+        Branch: ecs-image
       RegionId: cn-hangzhou
       CommandType: RunShellScript
       CommandContent: |-
