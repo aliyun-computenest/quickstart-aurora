@@ -12,26 +12,29 @@ Service:
           ArtifactId: ${Artifact.FileArtifact.ArtifactId}
           ArtifactVersion: ${Artifact.FileArtifact.ArtifactVersion}
       SupplierTemplateConfigs:
-        - Name: 单机版
-          Url: ros_templates/template.yaml
-          AllowedRegions:
-            - cn-hangzhou
-            - cn-shanghai
-            - cn-beijing
-    TemplateConfigs:
       - Name: 单机版
-        Url: 'ros_templates/template.yaml'
+        Url: ros_templates/template.yaml
         AllowedRegions:
-          - cn-hangzhou
-          - cn-shanghai
-          - cn-beijing
+        - cn-hangzhou
+        - cn-shanghai
+        - cn-beijing
+    TemplateConfigs:
+    - Name: 单机版
+      Url: 'ros_templates/template.yaml'
+      AllowedRegions:
+      - cn-hangzhou
+      - cn-shanghai
+      - cn-beijing
   ServiceType: private
   ServiceInfo:
-    - Locale: zh-CN
-      Name: Aurora应用
-      ShortDescription: demo
-      Image: 'resources/icons/service_logo.png'
+  - Locale: zh-CN
+    Name: Aurora应用
+    ShortDescription: demo
+    Image: 'resources/icons/service_logo.png'
 
+    Softwares:
+    - Name: aurora
+      Version: v2.3.4
 Artifact:
   # ECS镜像部署物
   EcsImage:
@@ -39,9 +42,9 @@ Artifact:
     ArtifactName: ecs_image_quickstart-aurora
     Description: quickstart-aurora EcsImage
     SupportRegionIds:
-      - cn-hangzhou
-      - cn-shanghai
-      - cn-beijing
+    - cn-hangzhou
+    - cn-shanghai
+    - cn-beijing
     ArtifactBuildProperty:
       CodeRepo:
         Platform: github
