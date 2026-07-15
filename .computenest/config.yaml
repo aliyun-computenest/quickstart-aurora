@@ -34,7 +34,7 @@ Service:
 
     Softwares:
     - Name: aurora
-      Version: v2.3.4
+      Version: v2.4.0
 Artifact:
   # ECS镜像部署物
   EcsImage:
